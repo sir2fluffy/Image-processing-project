@@ -27,7 +27,6 @@ def findColours(wraped_image):
         return coord*85 + 73
     
     square_size = 75
-    
     for x in range(0,4):
         x_ = to_image_coords(x)
         for y in range(0,4):
@@ -57,8 +56,8 @@ def findColours(wraped_image):
             cv.circle(wraped_image2,(y_+25,x_+25),17 ,color = [0,0,0],thickness = 10)
             cv.circle(wraped_image2,(y_+25,x_+25),15 ,color = colour_value_dict[colour],thickness = 10)
             colour_array_symbol[x,y] = colour
-    cv.imshow("wrap",wraped_image2)
-    cv.waitKey(0)
+    # cv.imshow("wrap",wraped_image2)
+    # cv.waitKey(0)
     
     return colour_array_symbol, wraped_image2
           
@@ -73,7 +72,7 @@ def findCircles(rgb_image):
     # cv.imshow("rgb",rgb_image)
     # cv.waitKey(0)
 
-    threshold_value = 100
+    threshold_value = 120
     threshold = cv.threshold(rgb_image[:,:,0], threshold_value, 255, cv.THRESH_BINARY_INV)[1]   * cv.threshold(rgb_image[:,:,1], threshold_value, 255, cv.THRESH_BINARY_INV)[1]    * cv.threshold(rgb_image[:,:,2], threshold_value, 255, cv.THRESH_BINARY_INV)[1]   
 
 
@@ -82,7 +81,7 @@ def findCircles(rgb_image):
     
     circles_only = (cv.medianBlur(threshold, 5)) # threshold out all of non circles objects on the image
     
-    # cv.imshow("circles",circles_only)
+    # cv.imshow("circles",cv.resize(circles_only,[480,480]))
     # cv.waitKey(0)
     
     cnts = cv.findContours(circles_only, cv.RETR_EXTERNAL,	cv.CHAIN_APPROX_SIMPLE)
@@ -97,30 +96,25 @@ def findCircles(rgb_image):
         centers[index,:] = center #store centers, to find centers of grid, note will not always be center of grid but is an adequate approximation, just need to find bounding corners
         	
         # draw the contour and center of the shape on the image
-        #cv.drawContours(rgb_image, [cnt], -1, (0, 255, 0), 2)
-        #cv.circle(rgb_image, center, 7, (255, 255, 255), -1)
+        cv.drawContours(rgb_image, [cnt], -1, (0, 255, 0), 2)
+        cv.circle(rgb_image, center, 7, (255, 255, 255), -1)
     	
     	
     	# show the image
-    print("centers")
+    # cv.imshow("rgb",rgb_image)
+    # cv.waitKey(0)
     return centers
 
 # now that we have the circles we need to contour them and find their centers
-def unwarp(rgb_image):
+def correctImage(rgb_image):
     """requires only the circles on the image to be white and everything else to be black returns the unwraped image that has the same form as the org images"""
-    centers = findCircles(rgb_image)
-        
-    grid_center_approx = np.array ((int(np.average(centers[:,0])), int(np.average(centers[:,1])))) # so the point with with both coords less than the center is bottom left
-    
+    centers = findCircles(rgb_image)        
+    grid_center_approx = np.array ((int(np.average(centers[:,0])), int(np.average(centers[:,1]))))    
     rect = np.zeros((4,2),np.float32) #make new array to popualte with centers in order of c as iamge orgin 0,0 is top left
-    
-
-     
+        
     if np.shape(centers) != (4 ,2):
         print("not 4 centers")
         exit()
-
-
 
     def bearing(point, center):
         x, y = point
@@ -198,29 +192,31 @@ def loadImages(filename):
     return rgb_image
 
 
+def colourMatrix(filename):
+    rgb_image = loadImages(filename)
+        
+    print(filename)     
+    
+    warp = correctImage(rgb_image)        
+    colour_array, warp_pridicted = findColours(warp)    
+    print(colour_array)
+
+#        save the image
+    cv.imwrite(f"images2_predicted\{filename}",warp_pridicted)
+    
+
+
 def main():
+    global colour_array
     for filename in os.listdir("images2"):
         
-        rgb_image = loadImages(filename)
-        
-        print(filename)
-        
-        
-        warp = unwarp(rgb_image)
-        
-        colour_array, warp_pridicted = findColours(warp)
-        
-        print(f"{filename}\n{colour_array }") 
-        print("\n"*3)
-    
-#        save the image
-        cv.imwrite(f"images2_predicted\{filename}",warp_pridicted)
+        colourMatrix(filename)
     
 input_image = cv.imread(f"images2\org_1.png",cv.IMREAD_GRAYSCALE)# make image grey, just to locate the circles -> boxes
 smooth_image = cv.GaussianBlur(input_image, [3,3],1,1)# attempt to remove some noise
 
-cv.imshow("greyblur",smooth_image)
-cv.waitKey(0)
+# cv.imshow("greyblur",smooth_image)
+# cv.waitKey(0)
 
 
 main()
